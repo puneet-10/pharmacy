@@ -15,24 +15,32 @@ func SignUpHandler(c echo.Context) error {
 	}
 
 	// Check that the required fields are provided
-	if user.Name == "" || user.Email == "" || user.Password == "" {
+	if user.Name == "" || user.Phone == "" || user.Password == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "Name, Email, and Password are required")
 	}
 
 	// Check if the email already exists
-	existingUser, _ := models.AuthenticateUser(user.Email, "")
+	token, existingUser, _ := models.AuthenticateUser(user.Phone, "")
 	if existingUser != nil {
-		return echo.NewHTTPError(http.StatusConflict, "Email already in use")
+		return echo.NewHTTPError(http.StatusConflict, "Phone Number already in use")
 	}
 
 	// Create the user with the is_admin field
-	newUser, err := models.CreateUser(user.Name, user.Email, user.Phone, user.Password, user.IsAdmin)
+	token, newUser, err := models.CreateUser(user.Name, user.Email, user.Phone, user.Password, user.IsAdmin)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-
+	userResponse := models.UserResponse{
+		PhoneNumber: newUser.Phone,
+		Name:        newUser.Name,
+		IsAdmin:     newUser.IsAdmin,
+	}
+	response := map[string]interface{}{
+		"token": token,
+		"user":  userResponse,
+	}
 	// Return the created user
-	return c.JSON(http.StatusCreated, newUser)
+	return c.JSON(http.StatusCreated, response)
 }
 
 // UpdateUserHandler handles the user update process
@@ -82,7 +90,7 @@ func AuthenticateHandler(c echo.Context) error {
 	}
 
 	// Authenticate the user (either by email or phone)
-	user, err := models.AuthenticateUser(request.Identifier, request.Password)
+	token, user, err := models.AuthenticateUser(request.Identifier, request.Password)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid credentials")
 	}
@@ -92,6 +100,15 @@ func AuthenticateHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid credentials")
 	}
 
+	userResponse := models.UserResponse{
+		PhoneNumber: user.Phone,
+		Name:        user.Name,
+		IsAdmin:     user.IsAdmin,
+	}
+	response := map[string]interface{}{
+		"token": token,
+		"user":  userResponse,
+	}
 	// Return the authenticated user
-	return c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusOK, response)
 }
