@@ -39,11 +39,13 @@ func SetDB(d *gorm.DB) {
 // GenerateJWT creates a JWT token for the given user
 func GenerateJWT(user *User) (string, error) {
 	claims := jwt.MapClaims{
+		"userId":  user.ID, // <-- Include user ID
 		"name":    user.Name,
 		"phone":   user.Phone,
 		"isAdmin": user.IsAdmin,
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
 }
