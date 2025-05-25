@@ -18,14 +18,23 @@ func NewOrderHandler() *OrderHandler {
 }
 
 func (h *OrderHandler) CreateOrder(c echo.Context) error {
+	userID, _, err := GetUserFromHeader(c)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"message": err.Error()})
+	}
+
 	var req models.OrderRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid request"})
 	}
-	order, err := models.CreateOrderWithItems(req, "admin_user")
+
+	req.UserID = userID
+
+	order, err := models.CreateOrderWithItems(req, "api_user") // or fetch updatedBy from token
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to create order"})
 	}
+
 	return c.JSON(http.StatusOK, order)
 }
 

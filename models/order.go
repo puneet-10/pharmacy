@@ -20,11 +20,13 @@ func (Order) TableName() string {
 }
 
 type OrderItem struct {
-	ID         uint `json:"-" gorm:"primaryKey"`
-	OrderID    uint `json:"-"`
-	MedicineID uint `json:"medicineId"`
-	CompanyID  uint `json:"companyId"`
-	Quantity   int  `json:"quantity"`
+	ID         uint     `json:"-" gorm:"primaryKey"`
+	OrderID    uint     `json:"-"`
+	MedicineID uint     `json:"medicineId"`
+	CompanyID  uint     `json:"companyId"`
+	Quantity   int      `json:"quantity"`
+	Medicine   Medicine `json:"medicine" gorm:"foreignKey:MedicineID;references:ID"`
+	Company    Company  `json:"company" gorm:"foreignKey:CompanyID;references:ID"`
 }
 
 // TableName specifies the table name for GORM to use
@@ -39,18 +41,22 @@ type OrderRequest struct {
 }
 
 type OrderItemRequest struct {
-	MedicineID uint `json:"medicineId"`
-	CompanyID  uint `json:"companyId"`
-	Quantity   int  `json:"quantity"`
+	MedicineID   uint   `json:"medicineId"`
+	MedicineName string `json:"medicineName,omitempty"`
+	CompanyID    uint   `json:"companyId"`
+	CompanyName  string `json:"companyName,omitempty"`
+	Quantity     int    `json:"quantity"`
 }
 
 func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
 	var items []OrderItemRequest
 	for _, item := range order.Items {
 		items = append(items, OrderItemRequest{
-			MedicineID: item.MedicineID,
-			CompanyID:  item.CompanyID,
-			Quantity:   item.Quantity,
+			MedicineID:   item.MedicineID,
+			MedicineName: item.Medicine.Name,
+			CompanyID:    item.CompanyID,
+			CompanyName:  item.Company.CompanyName,
+			Quantity:     item.Quantity,
 		})
 	}
 	return &OrderRequest{
@@ -84,13 +90,15 @@ func CreateOrderWithItems(req OrderRequest, updatedBy string) (*OrderRequest, er
 		return nil, err
 	}
 
-	order.Items = items
+	// Reload with associations
+	db.Preload("Items.Medicine").Preload("Items.Company").First(&order)
+
 	return ConvertOrderToOrderRequest(&order), nil
 }
 
 func GetOrderByID(id uint) (*OrderRequest, error) {
 	var order Order
-	if err := db.Preload("Items").First(&order, id).Error; err != nil {
+	if err := db.Preload("Items.Medicine").Preload("Items.Company").First(&order, id).Error; err != nil {
 		return nil, err
 	}
 	return ConvertOrderToOrderRequest(&order), nil
@@ -98,7 +106,7 @@ func GetOrderByID(id uint) (*OrderRequest, error) {
 
 func GetAllOrders(userID uint, isAdmin bool) ([]OrderRequest, error) {
 	var orders []Order
-	query := db.Preload("Items")
+	query := db.Preload("Items.Medicine").Preload("Items.Company")
 
 	if !isAdmin {
 		query = query.Where("user_id = ?", userID)
@@ -144,6 +152,8 @@ func UpdateOrder(id uint, req OrderRequest, updatedBy string) (*OrderRequest, er
 	if err := db.Save(&order).Error; err != nil {
 		return nil, err
 	}
+
+	db.Preload("Items.Medicine").Preload("Items.Company").First(&order)
 
 	order.Items = items
 	return ConvertOrderToOrderRequest(&order), nil
