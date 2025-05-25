@@ -28,6 +28,7 @@ func (h *OrderHandler) CreateOrder(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid request"})
 	}
 
+	// ✅ Set userID from token
 	req.UserID = userID
 
 	order, err := models.CreateOrderWithItems(req, "api_user") // or fetch updatedBy from token
@@ -58,6 +59,9 @@ func (h *OrderHandler) GetAllOrders(c echo.Context) error {
 	orders, err := models.GetAllOrders(userID, isAdmin)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to fetch orders"})
+	}
+	if orders == nil {
+		return c.JSON(http.StatusOK, map[string]interface{}{})
 	}
 	return c.JSON(http.StatusOK, orders)
 }
