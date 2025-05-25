@@ -35,9 +35,10 @@ func (OrderItem) TableName() string {
 }
 
 type OrderRequest struct {
-	OrderID uint               `json:"orderId"`
-	UserID  uint               `json:"userId"`
-	Items   []OrderItemRequest `json:"items"`
+	OrderID   uint               `json:"orderId"`
+	UserID    uint               `json:"userId"`
+	Items     []OrderItemRequest `json:"items"`
+	CreatedAt time.Time          `json:"createdAt"`
 }
 
 type OrderItemRequest struct {
@@ -63,6 +64,7 @@ func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
 		OrderID: order.ID,
 		UserID:  order.UserID,
 		Items:   items,
+		CreatedAt: order.CreatedAt,
 	}
 }
 
