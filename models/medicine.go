@@ -2,6 +2,11 @@
 package models
 
 import (
+	"encoding/csv"
+	"fmt"
+	"io"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -151,4 +156,74 @@ func GetAllMedicines() ([]CompanyMedicinesResponse, error) {
 	}
 
 	return response, nil
+}
+
+type ParsedMedicine struct {
+	Name        string
+	Description string
+	CompanyName string
+}
+
+func InsertMedicinesFromCSV(filePath string, updatedBy string) error {
+	// Step 1: Read and parse the CSV
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("could not open file: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	_, _ = reader.Read() // skip header
+
+	// Step 2: Load all companies
+	var companies []Company
+	if err := db.Find(&companies).Error; err != nil {
+		return err
+	}
+	companyMap := make(map[string]Company)
+	for _, c := range companies {
+		companyMap[strings.ToLower(strings.TrimSpace(c.CompanyName))] = c
+	}
+
+	// Step 3: Process and insert each record
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil || len(record) < 3 {
+			continue // skip bad lines
+		}
+
+		name := strings.TrimSpace(record[0])
+		desc := strings.TrimSpace(record[1])
+		companyName := strings.TrimSpace(record[2])
+		lookup := strings.ToLower(companyName)
+
+		company, exists := companyMap[lookup]
+		if !exists {
+			// Create new company
+			company = Company{
+				CompanyName: companyName,
+				Description: "Auto-generated via CSV",
+				UpdatedBy:   updatedBy,
+			}
+			if err := db.Create(&company).Error; err != nil {
+				return fmt.Errorf("error inserting company: %w", err)
+			}
+			companyMap[lookup] = company
+		}
+
+		medicine := Medicine{
+			Name:        name,
+			Description: desc,
+			CompanyID:   company.ID,
+			UpdatedBy:   updatedBy,
+		}
+		if err := db.Create(&medicine).Error; err != nil {
+			return fmt.Errorf("error inserting medicine: %w", err)
+		}
+	}
+
+	return nil
 }

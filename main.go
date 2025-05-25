@@ -29,6 +29,12 @@ func main() {
 
 	// Set the database connection for models
 	models.SetDB(db)
+	jwtMiddleware := middleware.JWTWithConfig(middleware.JWTConfig{
+		TokenLookup: "header:Authorization",
+		AuthScheme:  "Bearer",
+		SigningKey:  []byte("RaghavSureka"),
+		ContextKey:  "token",
+	})
 
 	// Initialize Echo instance
 	e := echo.New()
@@ -39,6 +45,7 @@ func main() {
 
 	companyHandler := handlers.NewCompanyHandler()
 	medicineHandler := handlers.NewMedicineHandler()
+	orderHandler := handlers.NewOrderHandler()
 
 	// Define routes
 	e.POST("/signup", handlers.SignUpHandler)
@@ -56,6 +63,13 @@ func main() {
 	e.DELETE("/medicines/:id", medicineHandler.DeleteMedicine)
 	e.GET("/medicines/:id", medicineHandler.GetMedicine)
 	e.GET("/medicines", medicineHandler.GetAllMedicines)
+	e.POST("/medicines/upload", medicineHandler.UploadMedicinesCSV)
+
+	e.POST("/orders", orderHandler.CreateOrder)
+	e.GET("/orders/:id", orderHandler.GetOrder)
+	e.PUT("/orders/:id", orderHandler.UpdateOrder)
+	e.DELETE("/orders/:id", orderHandler.DeleteOrder)
+	e.GET("/orders", orderHandler.GetAllOrders, jwtMiddleware)
 
 	// Start the server
 	e.Logger.Fatal(e.Start(":8080"))

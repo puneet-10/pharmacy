@@ -3,7 +3,9 @@ package handlers
 
 import (
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
+	"os"
 	"pharmacy/models"
 	"strconv"
 )
@@ -91,4 +93,35 @@ func (h *MedicineHandler) GetAllMedicines(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, medicines)
+}
+
+func (h *MedicineHandler) UploadMedicinesCSV(c echo.Context) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "CSV file is required"})
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	tempPath := "/tmp/" + file.Filename
+	dst, err := os.Create(tempPath)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Cannot save file"})
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Cannot write file"})
+	}
+
+	// Pass to model logic
+	if err := models.InsertMedicinesFromCSV(tempPath, "admin_user"); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Medicines uploaded successfully"})
 }
