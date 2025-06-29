@@ -23,8 +23,8 @@ func main() {
 		log.Fatal("Error connecting to the database:", err)
 	}
 
-	// Auto-migrate the schema (creates the users table, and ensures it has the correct columns)
-	if err := db.AutoMigrate(&models.User{}); err != nil {
+	// Auto-migrate the schema (creates all tables and ensures they have the correct columns)
+	if err := db.AutoMigrate(&models.User{}, &models.Company{}, &models.Medicine{}, &models.Order{}, &models.OrderItem{}); err != nil {
 		log.Fatal("Error migrating database:", err)
 	}
 

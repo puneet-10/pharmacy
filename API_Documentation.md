@@ -27,6 +27,7 @@ Authorization: Bearer <jwt_token>
   "email": "john@example.com",
   "phone": "1234567890",
   "password": "password123",
+  "firm_name": "ABC Pharmacy",
   "is_admin": false
 }
 ```
@@ -36,15 +37,18 @@ Authorization: Bearer <jwt_token>
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
+    "id": 1,
     "phoneNumber": "1234567890",
     "name": "John Doe",
+    "email": "john@example.com",
+    "firmName": "ABC Pharmacy",
     "isAdmin": false
   }
 }
 ```
 
 **Error Responses:**
-- `400 Bad Request`: Invalid input or missing required fields
+- `400 Bad Request`: Invalid input or missing required fields (Name, Phone, and Password are required)
 - `409 Conflict`: Phone number already in use
 
 ---
@@ -67,8 +71,11 @@ Authorization: Bearer <jwt_token>
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
+    "id": 1,
     "phoneNumber": "1234567890",
     "name": "John Doe",
+    "email": "john@example.com",
+    "firmName": "ABC Pharmacy",
     "isAdmin": false
   }
 }
@@ -96,6 +103,7 @@ Authorization: Bearer <jwt_token>
 {
   "name": "John Smith",
   "phone": "0987654321",
+  "firm_name": "XYZ Pharmacy",
   "is_admin": true
 }
 ```
@@ -108,6 +116,7 @@ Authorization: Bearer <jwt_token>
   "email": "john@example.com",
   "phone": "0987654321",
   "password": "hashed_password",
+  "firm_name": "XYZ Pharmacy",
   "is_admin": true,
   "created_at": "2024-01-01T00:00:00Z",
   "updated_at": "2024-01-02T00:00:00Z",
@@ -736,7 +745,9 @@ The JWT token contains the following claims:
 {
   "userId": 1,
   "name": "John Doe",
+  "email": "john@example.com",
   "phone": "1234567890",
+  "firmName": "ABC Pharmacy",
   "isAdmin": false,
   "exp": 1704067200
 }

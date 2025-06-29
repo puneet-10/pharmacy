@@ -1,12 +1,13 @@
 package models
 
 import (
+	"strings"
+	"time"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"strings"
-	"time"
 )
 
 // User struct represents the user model in the database
@@ -16,6 +17,7 @@ type User struct {
 	Email     string    `json:"email"`
 	Phone     string    `json:"phone" gorm:"unique"`
 	Password  string    `json:"password"`
+	FirmName  string    `json:"firm_name"`
 	IsAdmin   bool      `json:"is_admin"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -23,8 +25,11 @@ type User struct {
 }
 
 type UserResponse struct {
+	ID          uint   `json:"id"`
 	PhoneNumber string `json:"phoneNumber"`
 	Name        string `json:"name"`
+	Email       string `json:"email"`
+	FirmName    string `json:"firmName"`
 	IsAdmin     bool   `json:"isAdmin"`
 }
 
@@ -39,11 +44,13 @@ func SetDB(d *gorm.DB) {
 // GenerateJWT creates a JWT token for the given user
 func GenerateJWT(user *User) (string, error) {
 	claims := jwt.MapClaims{
-		"userId":  user.ID, // <-- Include user ID
-		"name":    user.Name,
-		"phone":   user.Phone,
-		"isAdmin": user.IsAdmin,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"userId":   user.ID,
+		"name":     user.Name,
+		"email":    user.Email,
+		"phone":    user.Phone,
+		"firmName": user.FirmName,
+		"isAdmin":  user.IsAdmin,
+		"exp":      time.Now().Add(24 * time.Hour).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -51,7 +58,7 @@ func GenerateJWT(user *User) (string, error) {
 }
 
 // CreateUser creates a new user in the database
-func CreateUser(name, email, phone, password string, isAdmin bool) (string, *User, error) {
+func CreateUser(name, email, phone, password, firmName string, isAdmin bool) (string, *User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", nil, err
@@ -62,6 +69,7 @@ func CreateUser(name, email, phone, password string, isAdmin bool) (string, *Use
 		Email:    email,
 		Phone:    phone,
 		Password: string(hashedPassword),
+		FirmName: firmName,
 		IsAdmin:  isAdmin,
 	}
 
@@ -97,8 +105,8 @@ func AuthenticateUser(identifier, password string) (string, *User, error) {
 	return token, &user, nil
 }
 
-// UpdateUser updates a user's data (name, phone, is_admin, updated_at)
-func UpdateUser(id int, name, phone string, isAdmin bool, updatedBy string) (*User, error) {
+// UpdateUser updates a user's data (name, phone, firm_name, is_admin, updated_at)
+func UpdateUser(id int, name, phone, firmName string, isAdmin bool, updatedBy string) (*User, error) {
 	var user User
 
 	if err := db.First(&user, id).Error; err != nil {
@@ -107,6 +115,7 @@ func UpdateUser(id int, name, phone string, isAdmin bool, updatedBy string) (*Us
 
 	user.Name = name
 	user.Phone = phone
+	user.FirmName = firmName
 	user.IsAdmin = isAdmin
 	user.UpdatedAt = time.Now()
 	user.UpdatedBy = updatedBy

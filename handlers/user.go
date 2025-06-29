@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"pharmacy/models"
 	"strconv"
+
+	"github.com/labstack/echo/v4"
 )
 
 // SignUpHandler handles the user sign-up process
@@ -16,23 +17,26 @@ func SignUpHandler(c echo.Context) error {
 
 	// Check that the required fields are provided
 	if user.Name == "" || user.Phone == "" || user.Password == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name, Email, and Password are required")
+		return echo.NewHTTPError(http.StatusBadRequest, "Name, Phone, and Password are required")
 	}
 
-	// Check if the email already exists
+	// Check if the phone number already exists
 	token, existingUser, _ := models.AuthenticateUser(user.Phone, "")
 	if existingUser != nil {
 		return echo.NewHTTPError(http.StatusConflict, "Phone Number already in use")
 	}
 
-	// Create the user with the is_admin field
-	token, newUser, err := models.CreateUser(user.Name, user.Email, user.Phone, user.Password, user.IsAdmin)
+	// Create the user with the firm_name and is_admin field
+	token, newUser, err := models.CreateUser(user.Name, user.Email, user.Phone, user.Password, user.FirmName, user.IsAdmin)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	userResponse := models.UserResponse{
+		ID:          newUser.ID,
 		PhoneNumber: newUser.Phone,
 		Name:        newUser.Name,
+		Email:       newUser.Email,
+		FirmName:    newUser.FirmName,
 		IsAdmin:     newUser.IsAdmin,
 	}
 	response := map[string]interface{}{
@@ -62,8 +66,8 @@ func UpdateUserHandler(c echo.Context) error {
 		updatedBy = "system" // Default value if not provided
 	}
 	intId, _ := strconv.Atoi(id)
-	// Update the user with the is_admin field
-	updatedUser, err := models.UpdateUser(intId, user.Name, user.Phone, user.IsAdmin, updatedBy)
+	// Update the user with the firm_name and is_admin field
+	updatedUser, err := models.UpdateUser(intId, user.Name, user.Phone, user.FirmName, user.IsAdmin, updatedBy)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -101,8 +105,11 @@ func AuthenticateHandler(c echo.Context) error {
 	}
 
 	userResponse := models.UserResponse{
+		ID:          user.ID,
 		PhoneNumber: user.Phone,
 		Name:        user.Name,
+		Email:       user.Email,
+		FirmName:    user.FirmName,
 		IsAdmin:     user.IsAdmin,
 	}
 	response := map[string]interface{}{
