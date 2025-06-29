@@ -26,6 +26,7 @@ type Medicine struct {
 type MedicineDTO struct {
 	MedicineID uint   `json:"medicineId"`
 	Name       string `json:"name"`
+	Offer      string `json:"offer"`
 }
 
 type CompanyMedicinesResponse struct {
@@ -147,6 +148,7 @@ func GetAllMedicines() ([]CompanyMedicinesResponse, error) {
 		medicineDTO := MedicineDTO{
 			MedicineID: med.ID,
 			Name:       med.Name,
+			Offer:      med.Offer,
 		}
 
 		companyMap[comp.ID].Medicines = append(companyMap[comp.ID].Medicines, medicineDTO)
