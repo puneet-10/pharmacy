@@ -20,6 +20,7 @@ type Medicine struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	UpdatedBy   string    `json:"updated_by"`
+	Offer       string    `json:"offer"`
 }
 
 type MedicineDTO struct {
@@ -39,12 +40,13 @@ func (Medicine) TableName() string {
 }
 
 // CreateMedicine creates a new medicine in the database
-func CreateMedicine(name, description string, companyID uint, updatedBy string) (*Medicine, error) {
+func CreateMedicine(name, description string, companyID uint, updatedBy string, offer string) (*Medicine, error) {
 	medicine := &Medicine{
 		Name:        name,
 		Description: description,
 		CompanyID:   companyID,
 		UpdatedBy:   updatedBy,
+		Offer:       offer,
 	}
 
 	// Insert the medicine into the database
@@ -57,7 +59,7 @@ func CreateMedicine(name, description string, companyID uint, updatedBy string) 
 }
 
 // UpdateMedicine updates an existing medicine in the database
-func UpdateMedicine(id uint, name, description string, companyID uint, updatedBy string) (*Medicine, error) {
+func UpdateMedicine(id uint, name, description string, companyID uint, updatedBy string, offer string) (*Medicine, error) {
 	var medicine Medicine
 
 	// Find the medicine by ID
@@ -70,6 +72,7 @@ func UpdateMedicine(id uint, name, description string, companyID uint, updatedBy
 	medicine.Description = description
 	medicine.CompanyID = companyID
 	medicine.UpdatedBy = updatedBy
+	medicine.Offer = offer
 	medicine.UpdatedAt = time.Now()
 
 	// Save the updated medicine to the database
@@ -225,5 +228,29 @@ func InsertMedicinesFromCSV(filePath string, updatedBy string) error {
 		}
 	}
 
+	return nil
+}
+
+// UpdateOfferForMedicine updates offer for a specific medicine or all medicines in a company
+func UpdateOfferForMedicine(medicineID uint, companyID uint, offer string, updatedBy string) error {
+	if medicineID == 0 {
+		// Update offer for all medicines under the company
+		if err := db.Model(&Medicine{}).Where("company_id = ?", companyID).Updates(map[string]interface{}{
+			"offer":      offer,
+			"updated_by": updatedBy,
+			"updated_at": time.Now(),
+		}).Error; err != nil {
+			return err
+		}
+	} else {
+		// Update offer for specific medicine
+		if err := db.Model(&Medicine{}).Where("id = ?", medicineID).Updates(map[string]interface{}{
+			"offer":      offer,
+			"updated_by": updatedBy,
+			"updated_at": time.Now(),
+		}).Error; err != nil {
+			return err
+		}
+	}
 	return nil
 }

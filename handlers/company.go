@@ -2,10 +2,10 @@
 package handlers
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"pharmacy/models"
 	"strconv"
+	"github.com/labstack/echo/v4"
 )
 
 // CompanyHandler holds the database connection and provides methods to handle HTTP requests
@@ -24,7 +24,7 @@ func (h *CompanyHandler) CreateCompany(c echo.Context) error {
 	}
 
 	// Call the model's CreateCompany function to insert the company
-	createdCompany, err := models.CreateCompany(company.CompanyName, company.Description, company.UpdatedBy)
+	createdCompany, err := models.CreateCompany(company.CompanyName, company.Description, company.UpdatedBy, company.LogoUrl)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not create company"})
 	}
@@ -60,7 +60,7 @@ func (h *CompanyHandler) UpdateCompany(c echo.Context) error {
 	}
 
 	// Call the model's UpdateCompany function to update the company
-	updatedCompany, err := models.UpdateCompany(uint(id), company.CompanyName, company.Description, company.UpdatedBy)
+	updatedCompany, err := models.UpdateCompany(uint(id), company.CompanyName, company.Description, company.UpdatedBy, company.LogoUrl)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not update company"})
 	}

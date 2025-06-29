@@ -2,12 +2,13 @@
 package handlers
 
 import (
-	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
 	"os"
 	"pharmacy/models"
 	"strconv"
+
+	"github.com/labstack/echo/v4"
 )
 
 // MedicineHandler holds the methods for CRUD operations on Medicine
@@ -26,7 +27,7 @@ func (h *MedicineHandler) CreateMedicine(c echo.Context) error {
 	}
 
 	// Call the model's CreateMedicine function to insert the medicine
-	createdMedicine, err := models.CreateMedicine(medicine.Name, medicine.Description, medicine.CompanyID, medicine.UpdatedBy)
+	createdMedicine, err := models.CreateMedicine(medicine.Name, medicine.Description, medicine.CompanyID, medicine.UpdatedBy, medicine.Offer)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not create medicine"})
 	}
@@ -47,7 +48,7 @@ func (h *MedicineHandler) UpdateMedicine(c echo.Context) error {
 	}
 
 	// Call the model's UpdateMedicine function to update the medicine
-	updatedMedicine, err := models.UpdateMedicine(uint(id), medicine.Name, medicine.Description, medicine.CompanyID, medicine.UpdatedBy)
+	updatedMedicine, err := models.UpdateMedicine(uint(id), medicine.Name, medicine.Description, medicine.CompanyID, medicine.UpdatedBy, medicine.Offer)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not update medicine"})
 	}
@@ -124,4 +125,45 @@ func (h *MedicineHandler) UploadMedicinesCSV(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Medicines uploaded successfully"})
+}
+
+// UpdateOffer handles PUT requests to update offers for medicines
+func (h *MedicineHandler) UpdateOffer(c echo.Context) error {
+	var request struct {
+		MedicineID uint   `json:"medicine_id"`
+		CompanyID  uint   `json:"company_id"`
+		Offer      string `json:"offer"`
+		UpdatedBy  string `json:"updated_by"`
+	}
+
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid data"})
+	}
+
+	// Validate required fields
+	if request.CompanyID == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Company ID is required"})
+	}
+
+	if request.Offer == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Offer is required"})
+	}
+
+	if request.UpdatedBy == "" {
+		request.UpdatedBy = "system" // Default value
+	}
+
+	// Call the model function to update the offer
+	if err := models.UpdateOfferForMedicine(request.MedicineID, request.CompanyID, request.Offer, request.UpdatedBy); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not update offer"})
+	}
+
+	var message string
+	if request.MedicineID == 0 {
+		message = "Offer updated for all medicines in the company"
+	} else {
+		message = "Offer updated for the specific medicine"
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": message})
 }

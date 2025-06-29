@@ -3,6 +3,7 @@ module pharmacy
 go 1.22
 
 require (
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/labstack/echo/v4 v4.12.0
 	golang.org/x/crypto v0.29.0
 	gorm.io/driver/postgres v1.5.10

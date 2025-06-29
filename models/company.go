@@ -12,6 +12,7 @@ type Company struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	UpdatedBy   string    `json:"updated_by"`
+	LogoUrl     string    `json:"logo_url"`
 }
 
 // TableName specifies the table name for GORM to use
@@ -20,11 +21,12 @@ func (Company) TableName() string {
 }
 
 // CreateCompany creates a new company in the database
-func CreateCompany(companyName, description, updatedBy string) (*Company, error) {
+func CreateCompany(companyName, description, updatedBy, logoUrl string) (*Company, error) {
 	company := &Company{
 		CompanyName: companyName,
 		Description: description,
 		UpdatedBy:   updatedBy,
+		LogoUrl:     logoUrl,
 	}
 
 	// Insert the company into the database
@@ -46,7 +48,7 @@ func GetCompany(id uint) (*Company, error) {
 }
 
 // UpdateCompany updates an existing company in the database
-func UpdateCompany(id uint, companyName, description, updatedBy string) (*Company, error) {
+func UpdateCompany(id uint, companyName, description, updatedBy, logoUrl string) (*Company, error) {
 	var company Company
 
 	// Find the company by ID
@@ -58,6 +60,7 @@ func UpdateCompany(id uint, companyName, description, updatedBy string) (*Compan
 	company.CompanyName = companyName
 	company.Description = description
 	company.UpdatedBy = updatedBy
+	company.LogoUrl = logoUrl
 	company.UpdatedAt = time.Now()
 
 	// Save the updated company to the database

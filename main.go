@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+	"pharmacy/handlers"
+	"pharmacy/models"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
-	"pharmacy/handlers"
-	"pharmacy/models"
 )
 
 var db *gorm.DB
@@ -70,6 +71,8 @@ func main() {
 	e.PUT("/orders/:id", orderHandler.UpdateOrder)
 	e.DELETE("/orders/:id", orderHandler.DeleteOrder)
 	e.GET("/orders", orderHandler.GetAllOrders, jwtMiddleware)
+
+	e.PUT("/medicines/offer", medicineHandler.UpdateOffer)
 
 	// Start the server
 	e.Logger.Fatal(e.Start(":8080"))

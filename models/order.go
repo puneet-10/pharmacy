@@ -61,9 +61,9 @@ func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
 		})
 	}
 	return &OrderRequest{
-		OrderID: order.ID,
-		UserID:  order.UserID,
-		Items:   items,
+		OrderID:   order.ID,
+		UserID:    order.UserID,
+		Items:     items,
 		CreatedAt: order.CreatedAt,
 	}
 }
