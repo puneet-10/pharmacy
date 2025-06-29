@@ -1,40 +1,40 @@
 # Use the official Golang image as the base image
 FROM golang:1.22-alpine AS builder
 
-# Install git and other necessary tools
-RUN apk add --no-cache git ca-certificates
-
 # Set the working directory inside the container
 WORKDIR /app
 
-# Build arguments for git repository
-ARG GIT_REPO_URL
-ARG GIT_BRANCH=main
-ARG GIT_TOKEN
-ARG GIT_USER_NAME
-ARG GIT_USER_EMAIL
+# Install git (required for some Go modules and git operations)
+RUN apk add --no-cache git
 
 # Set up git configuration from build args (will use global config if available)
+ARG GIT_USER_NAME
+ARG GIT_USER_EMAIL
 RUN if [ -n "$GIT_USER_NAME" ]; then git config --global user.name "$GIT_USER_NAME"; fi
 RUN if [ -n "$GIT_USER_EMAIL" ]; then git config --global user.email "$GIT_USER_EMAIL"; fi
 
-# Clone the repository with the latest code
-RUN if [ -n "$GIT_TOKEN" ]; then \
-        git clone --depth 1 --branch ${GIT_BRANCH} https://${GIT_TOKEN}@${GIT_REPO_URL#https://} . ; \
-    else \
-        git clone --depth 1 --branch ${GIT_BRANCH} ${GIT_REPO_URL} . ; \
-    fi
+# If building from a git repository, clone the latest code
+# Replace YOUR_GIT_REPO_URL with your actual repository URL
+# ARG GIT_REPO_URL
+# ARG GIT_BRANCH=main
+# RUN git clone --depth 1 --branch ${GIT_BRANCH} ${GIT_REPO_URL} .
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
 
-# Create vendor directory
+# Run go mod vendor to create vendor directory
 RUN go mod vendor
 
-# Verify and tidy dependencies
+# Copy the source code into the container
+COPY . .
+
+# Verify dependencies are up to date
 RUN go mod tidy
 
-# Build the application using vendor directory
+# Build the application with vendor directory
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -installsuffix cgo -o main .
 
 # Start a new stage from scratch
