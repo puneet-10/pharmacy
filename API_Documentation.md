@@ -586,13 +586,13 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
 
 ### 17. Get Order by ID
 **Endpoint:** `GET /orders/{id}`  
-**Authentication:** Not required  
+**Authentication:** Optional (JWT Token for admin features)  
 **Description:** Retrieve a specific order
 
 **Path Parameters:**
 - `id` (integer): Order ID
 
-**Response (200 OK):**
+**Response (200 OK) - Regular User/No Auth:**
 ```json
 {
   "orderId": 1,
@@ -611,6 +611,33 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
 }
 ```
 
+**Response (200 OK) - Admin User:**
+```json
+{
+  "orderId": 1,
+  "userId": 1,
+  "items": [
+    {
+      "medicineId": 1,
+      "medicineName": "Aspirin",
+      "companyId": 1,
+      "companyName": "Pharma Corp",
+      "quantity": 2
+    }
+  ],
+  "status": "pending",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "userDetails": {
+    "name": "John Doe",
+    "phone": "1234567890",
+    "firmName": "ABC Pharmacy"
+  }
+}
+```
+
+**Note:** 
+- Admin users will see additional user details (name, phone, firmName) when authenticated
+
 **Error Responses:**
 - `400 Bad Request`: Invalid ID
 - `404 Not Found`: Order not found
@@ -622,7 +649,7 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
 **Authentication:** Required (JWT Token)  
 **Description:** Retrieve all orders (filtered by user if not admin)
 
-**Response (200 OK):**
+**Response (200 OK) - Regular User:**
 ```json
 [
   {
@@ -634,18 +661,44 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
         "medicineName": "Aspirin",
         "companyId": 1,
         "companyName": "Pharma Corp",
-              "quantity": 2
+        "quantity": 2
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2024-01-01T00:00:00Z"
+  }
+]
+```
+
+**Response (200 OK) - Admin User:**
+```json
+[
+  {
+    "orderId": 1,
+    "userId": 1,
+    "items": [
+      {
+        "medicineId": 1,
+        "medicineName": "Aspirin",
+        "companyId": 1,
+        "companyName": "Pharma Corp",
+        "quantity": 2
+      }
+    ],
+    "status": "pending",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "userDetails": {
+      "name": "John Doe",
+      "phone": "1234567890",
+      "firmName": "ABC Pharmacy"
     }
-  ],
-  "status": "pending",
-  "createdAt": "2024-01-01T00:00:00Z"
   }
 ]
 ```
 
 **Note:** 
 - Regular users can only see their own orders
-- Admin users can see all orders
+- Admin users can see all orders with user details (name, phone, firmName)
 
 **Error Responses:**
 - `401 Unauthorized`: Missing or invalid JWT token

@@ -12,6 +12,7 @@ type Order struct {
 	CreatedAt time.Time   `json:"created_at"`
 	UpdatedAt time.Time   `json:"updated_at"`
 	UpdatedBy string      `json:"updated_by"`
+	User      User        `json:"user,omitempty" gorm:"foreignKey:UserID;references:ID"`
 }
 
 // TableName specifies the table name for GORM to use
@@ -35,11 +36,18 @@ func (OrderItem) TableName() string {
 }
 
 type OrderRequest struct {
-	OrderID   uint               `json:"orderId"`
-	UserID    uint               `json:"userId"`
-	Items     []OrderItemRequest `json:"items"`
-	Status    string             `json:"status"`
-	CreatedAt time.Time          `json:"createdAt"`
+	OrderID     uint               `json:"orderId"`
+	UserID      uint               `json:"userId"`
+	Items       []OrderItemRequest `json:"items"`
+	Status      string             `json:"status"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	UserDetails *UserDetails       `json:"userDetails,omitempty"`
+}
+
+type UserDetails struct {
+	Name     string `json:"name"`
+	Phone    string `json:"phone"`
+	FirmName string `json:"firmName"`
 }
 
 type OrderItemRequest struct {
@@ -50,7 +58,7 @@ type OrderItemRequest struct {
 	Quantity     int    `json:"quantity"`
 }
 
-func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
+func ConvertOrderToOrderRequest(order *Order, includeUserDetails bool) *OrderRequest {
 	var items []OrderItemRequest
 	for _, item := range order.Items {
 		items = append(items, OrderItemRequest{
@@ -61,13 +69,25 @@ func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
 			Quantity:     item.Quantity,
 		})
 	}
-	return &OrderRequest{
+
+	orderRequest := &OrderRequest{
 		OrderID:   order.ID,
 		UserID:    order.UserID,
 		Items:     items,
 		Status:    order.Status,
 		CreatedAt: order.CreatedAt,
 	}
+
+	// Include user details only if requested (for admin users)
+	if includeUserDetails && order.User.ID != 0 {
+		orderRequest.UserDetails = &UserDetails{
+			Name:     order.User.Name,
+			Phone:    order.User.Phone,
+			FirmName: order.User.FirmName,
+		}
+	}
+
+	return orderRequest
 }
 
 func CreateOrderWithItems(req OrderRequest, updatedBy string) (*OrderRequest, error) {
@@ -98,7 +118,7 @@ func CreateOrderWithItems(req OrderRequest, updatedBy string) (*OrderRequest, er
 	// Reload with associations
 	db.Preload("Items.Medicine").Preload("Items.Company").First(&order)
 
-	return ConvertOrderToOrderRequest(&order), nil
+	return ConvertOrderToOrderRequest(&order, false), nil
 }
 
 func GetOrderByID(id uint) (*OrderRequest, error) {
@@ -106,12 +126,31 @@ func GetOrderByID(id uint) (*OrderRequest, error) {
 	if err := db.Preload("Items.Medicine").Preload("Items.Company").First(&order, id).Error; err != nil {
 		return nil, err
 	}
-	return ConvertOrderToOrderRequest(&order), nil
+	return ConvertOrderToOrderRequest(&order, false), nil
+}
+
+func GetOrderByIDWithUserDetails(id uint, includeUserDetails bool) (*OrderRequest, error) {
+	var order Order
+	query := db.Preload("Items.Medicine").Preload("Items.Company")
+
+	if includeUserDetails {
+		query = query.Preload("User")
+	}
+
+	if err := query.First(&order, id).Error; err != nil {
+		return nil, err
+	}
+	return ConvertOrderToOrderRequest(&order, includeUserDetails), nil
 }
 
 func GetAllOrders(userID uint, isAdmin bool) ([]OrderRequest, error) {
 	var orders []Order
 	query := db.Preload("Items.Medicine").Preload("Items.Company")
+
+	// Preload user data only if admin is requesting
+	if isAdmin {
+		query = query.Preload("User")
+	}
 
 	if !isAdmin {
 		query = query.Where("user_id = ?", userID)
@@ -123,7 +162,7 @@ func GetAllOrders(userID uint, isAdmin bool) ([]OrderRequest, error) {
 
 	var result []OrderRequest
 	for _, order := range orders {
-		result = append(result, *ConvertOrderToOrderRequest(&order))
+		result = append(result, *ConvertOrderToOrderRequest(&order, isAdmin))
 	}
 	return result, nil
 }
@@ -161,7 +200,7 @@ func UpdateOrder(id uint, req OrderRequest, updatedBy string) (*OrderRequest, er
 	db.Preload("Items.Medicine").Preload("Items.Company").First(&order)
 
 	order.Items = items
-	return ConvertOrderToOrderRequest(&order), nil
+	return ConvertOrderToOrderRequest(&order, false), nil
 }
 
 func UpdateOrderStatus(id uint, status string, updatedBy string) (*OrderRequest, error) {
@@ -183,7 +222,7 @@ func UpdateOrderStatus(id uint, status string, updatedBy string) (*OrderRequest,
 		return nil, err
 	}
 
-	return ConvertOrderToOrderRequest(&order), nil
+	return ConvertOrderToOrderRequest(&order, false), nil
 }
 
 func DeleteOrder(id uint) error {

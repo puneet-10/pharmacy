@@ -45,7 +45,15 @@ func (h *OrderHandler) GetOrder(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid ID"})
 	}
-	order, err := models.GetOrderByID(uint(id))
+
+	// Check if user is admin to include user details
+	_, isAdmin, err := GetUserFromHeader(c)
+	includeUserDetails := false
+	if err == nil && isAdmin {
+		includeUserDetails = true
+	}
+
+	order, err := models.GetOrderByIDWithUserDetails(uint(id), includeUserDetails)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"message": "Order not found"})
 	}
@@ -62,7 +70,7 @@ func (h *OrderHandler) GetAllOrders(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to fetch orders"})
 	}
 	if orders == nil {
-		return c.JSON(http.StatusOK, map[string]interface{}{})
+		return c.JSON(http.StatusOK, []models.OrderRequest{})
 	}
 	return c.JSON(http.StatusOK, orders)
 }
