@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  pharmacy-api:
+    build: .
+    container_name: pharmacy-app
+    ports:
+      - "8080:8080"
+    environment:
+      - GO_ENV=production
+    restart: unless-stopped
+    volumes:
+      - ./logos:/root/logos:ro  # Mount logos as read-only
+    networks:
+      - pharmacy-network
+
+networks:
+  pharmacy-network:
+    driver: bridge 

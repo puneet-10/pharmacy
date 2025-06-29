@@ -1,258 +1,169 @@
-// models/medicine.go
-package models
+// handler/medicine_handler.go
+package handlers
 
 import (
-	"encoding/csv"
-	"fmt"
 	"io"
+	"net/http"
 	"os"
-	"strings"
-	"time"
+	"pharmacy/models"
+	"strconv"
+
+	"github.com/labstack/echo/v4"
 )
 
-// Medicine struct represents the medicine model in the database
-type Medicine struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CompanyID   uint      `json:"company_id"` // Foreign key for Company
-	Company     Company   `json:"company"`    // Foreign key relationship with Company
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	UpdatedBy   string    `json:"updated_by"`
-	Offer       string    `json:"offer"`
+// MedicineHandler holds the methods for CRUD operations on Medicine
+type MedicineHandler struct{}
+
+// NewMedicineHandler creates a new instance of the handler
+func NewMedicineHandler() *MedicineHandler {
+	return &MedicineHandler{}
 }
 
-type MedicineDTO struct {
-	MedicineID uint   `json:"medicineId"`
-	Name       string `json:"name"`
-	Offer      string `json:"offer"`
-}
-
-type CompanyMedicinesResponse struct {
-	CompanyID   uint          `json:"companyId"`
-	CompanyName string        `json:"companyName"`
-	Medicines   []MedicineDTO `json:"medicines"`
-}
-
-// TableName overrides the default table name
-func (Medicine) TableName() string {
-	return "medicine" // This ensures GORM uses the singular "medicine" table name
-}
-
-// CreateMedicine creates a new medicine in the database
-func CreateMedicine(name, description string, companyID uint, updatedBy string, offer string) (*Medicine, error) {
-	medicine := &Medicine{
-		Name:        name,
-		Description: description,
-		CompanyID:   companyID,
-		UpdatedBy:   updatedBy,
-		Offer:       offer,
+// CreateMedicine handles POST requests to create a new medicine
+func (h *MedicineHandler) CreateMedicine(c echo.Context) error {
+	var medicine models.Medicine
+	if err := c.Bind(&medicine); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid data"})
 	}
 
-	// Insert the medicine into the database
-	if err := db.Create(medicine).Error; err != nil {
-		return nil, err
-	}
-
-	// Return the created medicine
-	return medicine, nil
-}
-
-// UpdateMedicine updates an existing medicine in the database
-func UpdateMedicine(id uint, name, description string, companyID uint, updatedBy string, offer string) (*Medicine, error) {
-	var medicine Medicine
-
-	// Find the medicine by ID
-	if err := db.First(&medicine, id).Error; err != nil {
-		return nil, err
-	}
-
-	// Update the fields
-	medicine.Name = name
-	medicine.Description = description
-	medicine.CompanyID = companyID
-	medicine.UpdatedBy = updatedBy
-	medicine.Offer = offer
-	medicine.UpdatedAt = time.Now()
-
-	// Save the updated medicine to the database
-	if err := db.Save(&medicine).Error; err != nil {
-		return nil, err
-	}
-
-	return &medicine, nil
-}
-
-// DeleteMedicine deletes a medicine from the database
-func DeleteMedicine(id uint) error {
-	var medicine Medicine
-
-	// Find the medicine by ID
-	if err := db.First(&medicine, id).Error; err != nil {
-		return err
-	}
-
-	// Delete the medicine
-	if err := db.Delete(&medicine).Error; err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetMedicine retrieves a specific medicine by its ID
-func GetMedicine(id uint) (*Medicine, error) {
-	var medicine Medicine
-
-	// Fetch the medicine by ID and preload its associated company data
-	if err := db.Preload("Company").First(&medicine, id).Error; err != nil {
-		return nil, err
-	}
-
-	return &medicine, nil
-}
-
-// GetAllMedicines retrieves all medicines and groups them by their associated company
-//func GetAllMedicines() ([]Medicine, error) {
-//	var medicines []Medicine
-//
-//	// Fetch all medicines with company details preloaded
-//	if err := db.Preload("Company").Find(&medicines).Error; err != nil {
-//		return nil, err
-//	}
-//
-//	return medicines, nil
-//}
-
-func GetAllMedicines() ([]CompanyMedicinesResponse, error) {
-	var medicines []Medicine
-
-	// Fetch medicines with associated company data
-	if err := db.Preload("Company").Find(&medicines).Error; err != nil {
-		return nil, err
-	}
-
-	companyMap := make(map[uint]*CompanyMedicinesResponse)
-
-	for _, med := range medicines {
-		comp := med.Company
-		if _, exists := companyMap[comp.ID]; !exists {
-			companyMap[comp.ID] = &CompanyMedicinesResponse{
-				CompanyID:   comp.ID,
-				CompanyName: comp.CompanyName,
-				Medicines:   []MedicineDTO{},
-			}
-		}
-
-		medicineDTO := MedicineDTO{
-			MedicineID: med.ID,
-			Name:       med.Name,
-			Offer:      med.Offer,
-		}
-
-		companyMap[comp.ID].Medicines = append(companyMap[comp.ID].Medicines, medicineDTO)
-	}
-
-	// Convert map to slice
-	var response []CompanyMedicinesResponse
-	for _, v := range companyMap {
-		response = append(response, *v)
-	}
-
-	return response, nil
-}
-
-type ParsedMedicine struct {
-	Name        string
-	Description string
-	CompanyName string
-}
-
-func InsertMedicinesFromCSV(filePath string, updatedBy string) error {
-	// Step 1: Read and parse the CSV
-	file, err := os.Open(filePath)
+	// Call the model's CreateMedicine function to insert the medicine
+	createdMedicine, err := models.CreateMedicine(medicine.Name, medicine.Description, medicine.CompanyID, medicine.UpdatedBy, medicine.Offer)
 	if err != nil {
-		return fmt.Errorf("could not open file: %w", err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	_, _ = reader.Read() // skip header
-
-	// Step 2: Load all companies
-	var companies []Company
-	if err := db.Find(&companies).Error; err != nil {
-		return err
-	}
-	companyMap := make(map[string]Company)
-	for _, c := range companies {
-		companyMap[strings.ToLower(strings.TrimSpace(c.CompanyName))] = c
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not create medicine"})
 	}
 
-	// Step 3: Process and insert each record
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil || len(record) < 3 {
-			continue // skip bad lines
-		}
-
-		name := strings.TrimSpace(record[0])
-		desc := strings.TrimSpace(record[1])
-		companyName := strings.TrimSpace(record[2])
-		lookup := strings.ToLower(companyName)
-
-		company, exists := companyMap[lookup]
-		if !exists {
-			// Create new company
-			company = Company{
-				CompanyName: companyName,
-				Description: "Auto-generated via CSV",
-				UpdatedBy:   updatedBy,
-			}
-			if err := db.Create(&company).Error; err != nil {
-				return fmt.Errorf("error inserting company: %w", err)
-			}
-			companyMap[lookup] = company
-		}
-
-		medicine := Medicine{
-			Name:        name,
-			Description: desc,
-			CompanyID:   company.ID,
-			UpdatedBy:   updatedBy,
-		}
-		if err := db.Create(&medicine).Error; err != nil {
-			return fmt.Errorf("error inserting medicine: %w", err)
-		}
-	}
-
-	return nil
+	return c.JSON(http.StatusCreated, createdMedicine)
 }
 
-// UpdateOfferForMedicine updates offer for a specific medicine or all medicines in a company
-func UpdateOfferForMedicine(medicineID uint, companyID uint, offer string, updatedBy string) error {
-	if medicineID == 0 {
-		// Update offer for all medicines under the company
-		if err := db.Model(&Medicine{}).Where("company_id = ?", companyID).Updates(map[string]interface{}{
-			"offer":      offer,
-			"updated_by": updatedBy,
-			"updated_at": time.Now(),
-		}).Error; err != nil {
-			return err
-		}
-	} else {
-		// Update offer for specific medicine
-		if err := db.Model(&Medicine{}).Where("id = ?", medicineID).Updates(map[string]interface{}{
-			"offer":      offer,
-			"updated_by": updatedBy,
-			"updated_at": time.Now(),
-		}).Error; err != nil {
-			return err
-		}
+// UpdateMedicine handles PUT requests to update an existing medicine
+func (h *MedicineHandler) UpdateMedicine(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid medicine ID"})
 	}
-	return nil
+
+	var medicine models.Medicine
+	if err := c.Bind(&medicine); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid data"})
+	}
+
+	// Call the model's UpdateMedicine function to update the medicine
+	updatedMedicine, err := models.UpdateMedicine(uint(id), medicine.Name, medicine.Description, medicine.CompanyID, medicine.UpdatedBy, medicine.Offer)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not update medicine"})
+	}
+
+	return c.JSON(http.StatusOK, updatedMedicine)
+}
+
+// DeleteMedicine handles DELETE requests to delete a medicine
+func (h *MedicineHandler) DeleteMedicine(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid medicine ID"})
+	}
+
+	// Call the model's DeleteMedicine function to delete the medicine
+	if err := models.DeleteMedicine(uint(id)); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not delete medicine"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Medicine deleted successfully"})
+}
+
+// GetMedicine handles GET requests to retrieve a specific medicine by ID
+func (h *MedicineHandler) GetMedicine(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid medicine ID"})
+	}
+
+	medicine, err := models.GetMedicine(uint(id))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not retrieve medicine"})
+	}
+
+	return c.JSON(http.StatusOK, medicine)
+}
+
+// GetAllMedicines handles GET requests to retrieve all medicines
+func (h *MedicineHandler) GetAllMedicines(c echo.Context) error {
+	medicines, err := models.GetAllMedicines()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not retrieve medicines"})
+	}
+
+	return c.JSON(http.StatusOK, medicines)
+}
+
+func (h *MedicineHandler) UploadMedicinesCSV(c echo.Context) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "CSV file is required"})
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Cannot open uploaded file"})
+	}
+	defer src.Close()
+
+	tempPath := "/tmp/" + file.Filename
+	dst, err := os.Create(tempPath)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Cannot save file"})
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Cannot write file"})
+	}
+
+	// Pass to model logic
+	if err := models.InsertMedicinesFromCSV(tempPath, "admin_user"); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Medicines uploaded successfully"})
+}
+
+// UpdateOffer handles PUT requests to update offers for medicines
+func (h *MedicineHandler) UpdateOffer(c echo.Context) error {
+	var request struct {
+		MedicineID uint   `json:"medicine_id"`
+		CompanyID  uint   `json:"company_id"`
+		Offer      string `json:"offer"`
+		UpdatedBy  string `json:"updated_by"`
+	}
+
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid data"})
+	}
+
+	// Validate required fields
+	if request.CompanyID == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Company ID is required"})
+	}
+
+	if request.Offer == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Offer is required"})
+	}
+
+	if request.UpdatedBy == "" {
+		request.UpdatedBy = "system" // Default value
+	}
+
+	// Call the model function to update the offer
+	if err := models.UpdateOfferForMedicine(request.MedicineID, request.CompanyID, request.Offer, request.UpdatedBy); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Could not update offer"})
+	}
+
+	var message string
+	if request.MedicineID == 0 {
+		message = "Offer updated for all medicines in the company"
+	} else {
+		message = "Offer updated for the specific medicine"
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": message})
 }
