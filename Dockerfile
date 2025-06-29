@@ -34,8 +34,6 @@ WORKDIR /root/
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
 
-# Copy the logos directory
-COPY --from=builder /app/logos ./logos
 
 # Change ownership of the app directory
 RUN chown -R appuser:appgroup /root
