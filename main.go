@@ -69,6 +69,7 @@ func main() {
 	e.POST("/orders", orderHandler.CreateOrder)
 	e.GET("/orders/:id", orderHandler.GetOrder)
 	e.PUT("/orders/:id", orderHandler.UpdateOrder)
+	e.PUT("/orders/:id/status", orderHandler.UpdateOrderStatus)
 	e.DELETE("/orders/:id", orderHandler.DeleteOrder)
 	e.GET("/orders", orderHandler.GetAllOrders, jwtMiddleware)
 
