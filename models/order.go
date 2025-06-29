@@ -8,6 +8,7 @@ type Order struct {
 	ID        uint        `json:"orderId" gorm:"primaryKey"`
 	UserID    uint        `json:"userId"`
 	Items     []OrderItem `json:"items" gorm:"foreignKey:OrderID"`
+	Status    string      `json:"status" gorm:"default:'pending'"`
 	CreatedAt time.Time   `json:"created_at"`
 	UpdatedAt time.Time   `json:"updated_at"`
 	UpdatedBy string      `json:"updated_by"`
@@ -37,6 +38,7 @@ type OrderRequest struct {
 	OrderID   uint               `json:"orderId"`
 	UserID    uint               `json:"userId"`
 	Items     []OrderItemRequest `json:"items"`
+	Status    string             `json:"status"`
 	CreatedAt time.Time          `json:"createdAt"`
 }
 
@@ -63,6 +65,7 @@ func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
 		OrderID:   order.ID,
 		UserID:    order.UserID,
 		Items:     items,
+		Status:    order.Status,
 		CreatedAt: order.CreatedAt,
 	}
 }
@@ -70,6 +73,7 @@ func ConvertOrderToOrderRequest(order *Order) *OrderRequest {
 func CreateOrderWithItems(req OrderRequest, updatedBy string) (*OrderRequest, error) {
 	order := Order{
 		UserID:    req.UserID,
+		Status:    "pending",
 		UpdatedBy: updatedBy,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -157,6 +161,28 @@ func UpdateOrder(id uint, req OrderRequest, updatedBy string) (*OrderRequest, er
 	db.Preload("Items.Medicine").Preload("Items.Company").First(&order)
 
 	order.Items = items
+	return ConvertOrderToOrderRequest(&order), nil
+}
+
+func UpdateOrderStatus(id uint, status string, updatedBy string) (*OrderRequest, error) {
+	var order Order
+	if err := db.First(&order, id).Error; err != nil {
+		return nil, err
+	}
+
+	order.Status = status
+	order.UpdatedBy = updatedBy
+	order.UpdatedAt = time.Now()
+
+	if err := db.Save(&order).Error; err != nil {
+		return nil, err
+	}
+
+	// Reload with associations
+	if err := db.Preload("Items.Medicine").Preload("Items.Company").First(&order, id).Error; err != nil {
+		return nil, err
+	}
+
 	return ConvertOrderToOrderRequest(&order), nil
 }
 

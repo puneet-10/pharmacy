@@ -335,11 +335,13 @@ Authorization: Bearer <jwt_token>
     "medicines": [
       {
         "medicineId": 1,
-        "name": "Aspirin"
+        "name": "Aspirin",
+        "offer": "10% off"
       },
       {
         "medicineId": 2,
-        "name": "Ibuprofen"
+        "name": "Ibuprofen",
+        "offer": "Buy 2 Get 1 Free"
       }
     ]
   }
@@ -604,6 +606,7 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
       "quantity": 2
     }
   ],
+  "status": "pending",
   "createdAt": "2024-01-01T00:00:00Z"
 }
 ```
@@ -631,10 +634,11 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
         "medicineName": "Aspirin",
         "companyId": 1,
         "companyName": "Pharma Corp",
-        "quantity": 2
-      }
-    ],
-    "createdAt": "2024-01-01T00:00:00Z"
+              "quantity": 2
+    }
+  ],
+  "status": "pending",
+  "createdAt": "2024-01-01T00:00:00Z"
   }
 ]
 ```
@@ -685,6 +689,7 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
       "quantity": 3
     }
   ],
+  "status": "pending",
   "createdAt": "2024-01-01T00:00:00Z"
 }
 ```
@@ -695,7 +700,55 @@ Ibuprofen,Anti-inflammatory,Pharma Corp
 
 ---
 
-### 20. Delete Order
+### 20. Update Order Status
+**Endpoint:** `PUT /orders/{id}/status`  
+**Authentication:** Required (JWT Token)  
+**Description:** Update the status of an existing order
+
+**Path Parameters:**
+- `id` (integer): Order ID
+
+**Request Body:**
+```json
+{
+  "status": "processing"
+}
+```
+
+**Valid Status Values:**
+- `pending` - Order is pending (default when created)
+- `processing` - Order is being processed
+- `shipped` - Order has been shipped
+- `delivered` - Order has been delivered
+- `cancelled` - Order has been cancelled
+
+**Response (200 OK):**
+```json
+{
+  "orderId": 1,
+  "userId": 1,
+  "items": [
+    {
+      "medicineId": 1,
+      "medicineName": "Aspirin",
+      "companyId": 1,
+      "companyName": "Pharma Corp",
+      "quantity": 2
+    }
+  ],
+  "status": "processing",
+  "createdAt": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid ID, request body, or invalid status value
+- `401 Unauthorized`: Missing or invalid JWT token
+- `500 Internal Server Error`: Failed to update order status
+
+---
+
+### 21. Delete Order
 **Endpoint:** `DELETE /orders/{id}`  
 **Authentication:** Not required  
 **Description:** Delete an order

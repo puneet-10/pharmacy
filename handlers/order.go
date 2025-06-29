@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"pharmacy/models"
 	"strconv"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/labstack/echo/v4"
 )
 
 type OrderHandler struct{}
@@ -81,6 +82,46 @@ func (h *OrderHandler) UpdateOrder(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to update order"})
 	}
+	return c.JSON(http.StatusOK, order)
+}
+
+func (h *OrderHandler) UpdateOrderStatus(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid ID"})
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid request body"})
+	}
+
+	// Validate status values
+	validStatuses := []string{"pending", "processing", "shipped", "delivered", "cancelled"}
+	isValid := false
+	for _, validStatus := range validStatuses {
+		if req.Status == validStatus {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid status. Valid statuses are: pending, processing, shipped, delivered, cancelled"})
+	}
+
+	userID, _, err := GetUserFromHeader(c)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"message": err.Error()})
+	}
+
+	updatedBy := "user_" + strconv.Itoa(int(userID))
+	order, err := models.UpdateOrderStatus(uint(id), req.Status, updatedBy)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to update order status"})
+	}
+
 	return c.JSON(http.StatusOK, order)
 }
 
