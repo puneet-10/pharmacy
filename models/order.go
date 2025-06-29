@@ -1,4 +1,3 @@
-// models/order.go
 package models
 
 import (
