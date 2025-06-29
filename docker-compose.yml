@@ -2,7 +2,17 @@ version: '3.8'
 
 services:
   pharmacy-api:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      # To build from git, uncomment the following lines and set your repo details:
+      # dockerfile: Dockerfile.git
+      args:
+        GIT_REPO_URL: https://github.com/your-username/pharmacy.git
+        GIT_BRANCH: main
+        GIT_TOKEN: ${GIT_TOKEN}  # Set this in your environment
+        GIT_USER_NAME: ${GIT_USER_NAME}  # Will use global git config if not set
+        GIT_USER_EMAIL: ${GIT_USER_EMAIL}  # Will use global git config if not set
     container_name: pharmacy-app
     ports:
       - "8080:8080"
